@@ -1,0 +1,1 @@
+[{"anonymous":false,"inputs":[{"indexed":false,"name":"txOrigin","type":"address"},{"indexed":false,"name":"msgSender","type":"address"},{"indexed":false,"name":"cmd","type":"bytes"},{"indexed":false,"name":"key","type":"bytes"},{"indexed":false,"name":"value","type":"bytes"}],"name":"LogHistory","type":"event"}]
