@@ -37,6 +37,7 @@ public class BaseService {
     private static Client client;
     private CryptoKeyPair cryptoKeyPair;
 
+
     public BaseService(BcosConfig bcosConfig,ContractConfig contractConfig) {
         this.bcosConfig=bcosConfig;
         this.contractConfig=contractConfig;
@@ -52,8 +53,12 @@ public class BaseService {
             e.printStackTrace();
             log.error("初始化BaseService对象失败",e);
         }
-        bcosSDK=new BcosSDK(configOption);
-        client = bcosSDK.getClient(contractConfig.getGroupId());
+        synchronized(BaseService.class) {
+            if (bcosSDK==null && client == null) {
+                bcosSDK=new BcosSDK(configOption);
+                client = bcosSDK.getClient(contractConfig.getGroupId());
+            }
+        }
     }
 
 

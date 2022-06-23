@@ -31,7 +31,7 @@ public class SwaggerApp {
                 //页面标题
                 .title("基于区块链的股权登记系统")
                 //创建人
-                .contact(new Contact("meilong", "https://github.com/meilongwhpu/StockRegister.git", "meilong@chnc-stc.com"))
+                .contact(new Contact("meilong", "https://github.com/meilongwhpu/StockRegister", "meilong@chnc-stc.com"))
                 //版本号
                 .version("1.0")
                 //描述

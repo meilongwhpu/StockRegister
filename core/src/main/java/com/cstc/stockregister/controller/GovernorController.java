@@ -23,7 +23,7 @@ import java.util.*;
 @RestController
 @RequestMapping("/rest/governor")
 @Slf4j
-@Api(value="合约治理API",tags="合约治理API（15个）")
+@Api(value="合约治理",tags="合约治理（15个API接口）")
 public class GovernorController {
 
     @Autowired

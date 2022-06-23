@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/rest/account")
 @Slf4j
-@Api(value="账户信息管理API",tags="账户信息管理API（5个）")
+@Api(value="账户信息管理",tags="账户信息管理（5个API接口）")
 public class AccountController {
 
     @Autowired

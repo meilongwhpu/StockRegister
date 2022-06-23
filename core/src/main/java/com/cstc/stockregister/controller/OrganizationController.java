@@ -23,7 +23,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/rest/organization")
 @Slf4j
-@Api(value="企业信息管理API",tags="企业信息管理API（7个）")
+@Api(value="企业信息管理",tags="企业信息管理（7个API接口）")
 public class OrganizationController {
     @Autowired
     private OrganizationService organizationService;

@@ -21,7 +21,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/rest/stockAsset")
 @Slf4j
-@Api(value="股权登记管理API",tags="股权登记管理API（19个）")
+@Api(value="股权登记管理",tags="股权登记管理（19个API接口）")
 public class StockAssetController {
 
     @Autowired
