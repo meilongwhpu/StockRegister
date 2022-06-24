@@ -80,8 +80,9 @@ deploy.contract.account=0x14e8e34f9b993f01e87cbdeed3a6b76237e6c1a4
 - deploy.contract.account为部署合约的账户地址。
 
 ## 4. 编译和运行
-您可以在idea内直接运行，也可以编译成可执行jar包后在Linux系统中运行。利用gradle编译jar包以及配置文件存入dist目录下，生成stockregister-1.0.1-exec.jar，可执行此jar包：
+您可以在idea内直接运行，也可以编译成可执行jar包后在Linux系统中运行。利用gradle编译jar包以及配置文件存入dist目录下，生成stockregister-1.0.0-exec.jar，可运行此jar包：
 ```
-java -jar stockregister-1.0.1-exec.jar
+窗口运行命令：java -jar stockregister-1.0.0-exec.jar
+后台运行命令：nohup java -jar stockregister-1.0.0-exec.jar &
 ```
 随后，即可访问相关接口。
