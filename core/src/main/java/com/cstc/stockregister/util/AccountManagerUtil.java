@@ -6,10 +6,12 @@ import org.fisco.bcos.sdk.crypto.keypair.CryptoKeyPair;
 import org.fisco.bcos.sdk.crypto.keypair.ECDSAKeyPair;
 import org.fisco.bcos.sdk.crypto.keypair.SM2KeyPair;
 import org.fisco.bcos.sdk.crypto.keystore.PEMKeyStore;
+import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
 
+@Component
 public class AccountManagerUtil {
 
     // cryptoType: 用于需要指定加载的私钥类型

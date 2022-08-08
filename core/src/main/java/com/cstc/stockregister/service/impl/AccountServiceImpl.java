@@ -1,7 +1,5 @@
 package com.cstc.stockregister.service.impl;
 
-import com.cstc.stockregister.configuration.BcosConfig;
-import com.cstc.stockregister.configuration.ContractConfig;
 import com.cstc.stockregister.constant.ErrorCode;
 import com.cstc.stockregister.contracts.AccountData;
 import com.cstc.stockregister.contracts.gov_account.AccountManager;
@@ -12,24 +10,20 @@ import lombok.extern.slf4j.Slf4j;
 import org.fisco.bcos.sdk.abi.datatypes.generated.tuples.generated.Tuple1;
 import org.fisco.bcos.sdk.model.TransactionReceipt;
 import org.fisco.bcos.sdk.transaction.model.exception.ContractException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
 
 @Service
 @Slf4j
 public class AccountServiceImpl extends BaseService implements AccountService {
 
+    @Autowired
     private AccountManager accountManager;
 
-    public AccountServiceImpl(BcosConfig bcosConfig, ContractConfig contractConfig) {
-        super(bcosConfig,contractConfig);
-        try {
-            this.initialize(contractConfig.getDeployContractAccount());
-        } catch (Exception e) {
-            e.printStackTrace();
-            log.error("初始化AccountService对象失败",e);
-        }
-        accountManager=this.getContract(contractConfig.getAccountManagerAddress(), AccountManager.class);
-
+    @Bean
+    public AccountManager getAccountManager(){
+        return this.getContract(contractConfig.getAccountManagerAddress(), AccountManager.class);
     }
 
     @Override

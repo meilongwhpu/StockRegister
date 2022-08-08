@@ -2,74 +2,70 @@ package com.cstc.stockregister.service.impl;
 
 import com.cstc.stockregister.configuration.BcosConfig;
 import com.cstc.stockregister.configuration.ContractConfig;
-import com.cstc.stockregister.constant.SysConstant;
+import com.cstc.stockregister.contracts.Organization;
+import com.cstc.stockregister.contracts.StockAsset;
 import com.cstc.stockregister.util.AccountManagerUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.fisco.bcos.sdk.BcosSDK;
+import org.fisco.bcos.sdk.abi.EventEncoder;
 import org.fisco.bcos.sdk.client.Client;
-import org.fisco.bcos.sdk.config.ConfigOption;
-import org.fisco.bcos.sdk.config.exceptions.ConfigException;
-import org.fisco.bcos.sdk.config.model.ConfigProperty;
+import org.fisco.bcos.sdk.crypto.CryptoSuite;
 import org.fisco.bcos.sdk.crypto.keypair.CryptoKeyPair;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.support.ClassPathXmlApplicationContext;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.core.io.Resource;
+import org.springframework.stereotype.Service;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URL;
-import java.util.Map;
+import java.util.HashMap;
 
 @Slf4j
+@Service
+@EnableConfigurationProperties({BcosConfig.class,ContractConfig.class})
 public class BaseService {
 
-    private AccountManagerUtil accountManagerUtil=new AccountManagerUtil();
+    @Autowired
+    private AccountManagerUtil accountManagerUtil;
 
-    private final BcosConfig bcosConfig;
+    @Autowired
+    private  BcosConfig bcosConfig;
+    @Autowired
+    public ContractConfig contractConfig;
 
-    private final ContractConfig contractConfig;
+    @Autowired
+    protected BcosSDK bcosSDK;
 
-    private static BcosSDK bcosSDK;
-    private static Client client;
+    private Client client;
+
     private CryptoKeyPair cryptoKeyPair;
 
+    /**
+     * The topic map.
+     */
+    private HashMap<String, String> organizationTopicMap;
 
-    public BaseService(BcosConfig bcosConfig,ContractConfig contractConfig) {
-        this.bcosConfig=bcosConfig;
-        this.contractConfig=contractConfig;
-        ConfigProperty property = new ConfigProperty();
-        Map peers = bcosConfig.getNetwork();
-        property.setNetwork(peers);
-        Map<String, Object> cryptoMaterials = bcosConfig.getCryptoMaterial();
-        property.setCryptoMaterial(cryptoMaterials);
-        ConfigOption configOption = null;
-        try {
-            configOption = new ConfigOption(property);
-        } catch (ConfigException e) {
-            e.printStackTrace();
-            log.error("初始化BaseService对象失败",e);
+    private HashMap<String, String> stockTopicMap;
+
+    public HashMap<String, String> getStockTopicMap(){
+        if(stockTopicMap==null||stockTopicMap.size()==0) {
+            stockTopicMap = new HashMap<String, String>();
+            stockTopicMap.put(new EventEncoder(this.getClient().getCryptoSuite()).encode(StockAsset.STOCKBUSINESSRECORD_EVENT), StockAsset.STOCKBUSINESSRECORD_EVENT.getName());
         }
-        synchronized(BaseService.class) {
-            if (bcosSDK==null && client == null) {
-                bcosSDK=new BcosSDK(configOption);
-                client = bcosSDK.getClient(contractConfig.getGroupId());
-            }
-        }
+        return stockTopicMap;
     }
 
-
-    public void initialize(String accountAddress) throws Exception {
-        if(SysConstant.DEFAULT_GROUP_ID!=Integer.valueOf(contractConfig.getGroupId())){
-            client = bcosSDK.getClient(Integer.valueOf(contractConfig.getGroupId()));
+    public HashMap<String, String> getOrganizationTopicMap(){
+        if(organizationTopicMap==null||organizationTopicMap.size()==0){
+            organizationTopicMap = new HashMap<String, String>();
+            organizationTopicMap.put(new EventEncoder(this.getClient().getCryptoSuite()).encode(Organization.UPDATEORGINFORECORD_EVENT),Organization.UPDATEORGINFORECORD_EVENT.getName());
         }
-        Resource res=loadClassPathFileAsSpringResource("classpath:accounts/"+accountAddress+".pem");
-        cryptoKeyPair=accountManagerUtil.loadPemAccount(client,res.getInputStream());
-        //String pemAccountFilePath= contractConfig.getPemFilePath()+ File.separator+accountAddress+".pem";
-        //cryptoKeyPair=accountManagerUtil.loadPemAccount(client,pemAccountFilePath);
+        return organizationTopicMap;
     }
 
     public static Resource loadClassPathFileAsSpringResource(String classpathFilePath) {
@@ -78,14 +74,27 @@ public class BaseService {
     }
 
     public Client getClient() {
+        if(client==null){
+            client=bcosSDK.getClient(Integer.valueOf(contractConfig.getGroupId()));
+        }
         return client;
     }
 
-    public CryptoKeyPair getCryptoKeyPair() {
-        return cryptoKeyPair;
+
+    public CryptoSuite getCryptoSuite() {
+        int encryptType = bcosSDK.getGroupManagerService().getCryptoType(bcosConfig.getNetwork().get("peers").get(0));
+        log.info("getCommonSuite init encrypt type:{}", encryptType);
+        return new CryptoSuite(encryptType);
     }
 
     public <T> T getContract(String contractAddress, Object... params) {
+        Resource res=loadClassPathFileAsSpringResource("classpath:accounts/"+contractConfig.getDeployContractAccount()+".pem");
+        try {
+            cryptoKeyPair=accountManagerUtil.loadPemAccount(this.getClient(),res.getInputStream());
+        } catch (IOException e) {
+            e.printStackTrace();
+            log.error("初始化BaseService对象失败",e);
+        }
         Class type = (Class) params[0];
         T contract = null;
         try {
@@ -95,7 +104,7 @@ public class BaseService {
                     CryptoKeyPair.class);
             contract = (T) loader.invoke(
                     null,
-                    contractAddress, client, cryptoKeyPair);
+                    contractAddress, this.getClient(), cryptoKeyPair);
         } catch (Exception e) {
             e.printStackTrace();
             log.error("导入合约失败",e);
@@ -110,14 +119,14 @@ public class BaseService {
         try {
             URL url=Thread.currentThread().getContextClassLoader().getResource("accounts");
             String pemAccountFilePath= url.getPath()+ File.separator+sender+".pem";
-            CryptoKeyPair cryptoKeyPair=accountManagerUtil.loadPemAccount(client,pemAccountFilePath);
+            CryptoKeyPair cryptoKeyPair=accountManagerUtil.loadPemAccount(this.getClient(),pemAccountFilePath);
             Method loader = type.getMethod("load",
                     String.class,
                     Client.class,
                     CryptoKeyPair.class);
             contract = (T) loader.invoke(
                     null,
-                    contractAddress, client, cryptoKeyPair);
+                    contractAddress, this.getClient(), cryptoKeyPair);
         } catch (NoSuchMethodException e) {
             e.printStackTrace();
         } catch (IllegalAccessException e) {
@@ -133,5 +142,7 @@ public class BaseService {
     public ContractConfig getContractConfig() {
         return contractConfig;
     }
+
+
 
 }

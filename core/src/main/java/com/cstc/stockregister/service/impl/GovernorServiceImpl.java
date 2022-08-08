@@ -1,7 +1,5 @@
 package com.cstc.stockregister.service.impl;
 
-import com.cstc.stockregister.configuration.BcosConfig;
-import com.cstc.stockregister.configuration.ContractConfig;
 import com.cstc.stockregister.constant.ErrorCode;
 import com.cstc.stockregister.constant.SysConstant;
 import com.cstc.stockregister.contracts.Governor;
@@ -12,8 +10,9 @@ import org.fisco.bcos.sdk.abi.datatypes.generated.tuples.generated.Tuple1;
 import org.fisco.bcos.sdk.abi.datatypes.generated.tuples.generated.Tuple2;
 import org.fisco.bcos.sdk.model.TransactionReceipt;
 import org.fisco.bcos.sdk.transaction.codec.decode.TransactionDecoderInterface;
-import org.fisco.bcos.sdk.transaction.codec.decode.TransactionDecoderService;
 import org.fisco.bcos.sdk.transaction.model.dto.TransactionResponse;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.math.BigInteger;
@@ -24,20 +23,12 @@ import java.util.List;
 @Slf4j
 public class GovernorServiceImpl extends BaseService implements GovernorService {
 
+    @Autowired
     private Governor governor;
-    private TransactionDecoderInterface decoder;
 
-    public GovernorServiceImpl(BcosConfig bcosConfig,ContractConfig contractConfig){
-        super(bcosConfig,contractConfig);
-        try {
-            this.initialize(contractConfig.getDeployContractAccount());
-        } catch (Exception e) {
-            e.printStackTrace();
-            log.error("初始化GovernorService对象失败",e);
-        }
-        governor=this.getContract(contractConfig.getGovernorAddress(),Governor.class);
-        decoder = new TransactionDecoderService(this.getClient().getCryptoSuite());
-    }
+    @Autowired
+    @Qualifier("decoder")
+    private TransactionDecoderInterface decoder;
 
     @Override
     public String createAccount(String externalAccount) throws Exception {

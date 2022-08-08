@@ -1,7 +1,5 @@
 package com.cstc.stockregister.service.impl;
 
-import com.cstc.stockregister.configuration.BcosConfig;
-import com.cstc.stockregister.configuration.ContractConfig;
 import com.cstc.stockregister.constant.ErrorCode;
 import com.cstc.stockregister.constant.ResolveEventLogStatus;
 import com.cstc.stockregister.constant.SysConstant;
@@ -13,15 +11,15 @@ import com.cstc.stockregister.response.ResolveEventLogResult;
 import com.cstc.stockregister.service.OrganizationService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.fisco.bcos.sdk.abi.EventEncoder;
 import org.fisco.bcos.sdk.abi.datatypes.generated.tuples.generated.Tuple1;
 import org.fisco.bcos.sdk.abi.datatypes.generated.tuples.generated.Tuple2;
 import org.fisco.bcos.sdk.client.protocol.response.BcosTransactionReceiptsDecoder;
 import org.fisco.bcos.sdk.client.protocol.response.BcosTransactionReceiptsInfo;
 import org.fisco.bcos.sdk.model.TransactionReceipt;
 import org.fisco.bcos.sdk.transaction.codec.decode.TransactionDecoderInterface;
-import org.fisco.bcos.sdk.transaction.codec.decode.TransactionDecoderService;
 import org.fisco.bcos.sdk.transaction.model.dto.TransactionResponse;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
@@ -32,26 +30,12 @@ import java.util.*;
 @Slf4j
 public class OrganizationServiceImpl extends BaseService implements OrganizationService {
     private static final int STOP_RESOLVE_BLOCK_NUMBER = 0;
-    /**
-     * The topic map.
-     */
-    private final HashMap<String, String> topicMap;
 
+    @Autowired
     private Governor governor;
+    @Autowired
+    @Qualifier("decoder")
     private TransactionDecoderInterface decoder;
-    public OrganizationServiceImpl(BcosConfig bcosConfig, ContractConfig contractConfig) {
-        super(bcosConfig,contractConfig);
-        try {
-            this.initialize(contractConfig.getDeployContractAccount());
-        } catch (Exception e) {
-            e.printStackTrace();
-            log.error("初始化OrganizationService对象失败",e);
-        }
-        governor=this.getContract(contractConfig.getGovernorAddress(),Governor.class);
-        decoder = new TransactionDecoderService(this.getClient().getCryptoSuite());
-        topicMap = new HashMap<String, String>();
-        topicMap.put(new EventEncoder(this.getClient().getCryptoSuite()).encode(Organization.UPDATEORGINFORECORD_EVENT),"UpdateOrgInfoRecord");
-    }
 
     @Override
     public int updateOrgInfo(String orgCreditCode,List<String> orgInfoStr) throws Exception {
@@ -250,7 +234,7 @@ public class OrganizationServiceImpl extends BaseService implements Organization
                                                         Map<Integer, List<Organization.UpdateOrgInfoRecordEventResponse>> blockEventMap,
                                                         HashSet<Integer> isExist) {
         String topic = log.getTopics().get(0);
-        String event = topicMap.get(topic);
+        String event = this.getOrganizationTopicMap().get(topic);
 
         if (StringUtils.isNotBlank(event)) {
             return extractEventsFromBlock(organization, receipt, currentBlockNumber, blockEventMap,isExist);

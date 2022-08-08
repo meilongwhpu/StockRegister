@@ -1333,7 +1333,7 @@ public class StockAsset extends Contract {
             typedResponse.log = eventValues.getLog();
             typedResponse.businessType = (BigInteger) eventValues.getIndexedValues().get(0).getValue();
             typedResponse.account = (String) eventValues.getNonIndexedValues().get(0).getValue();
-            typedResponse.content = (List<Utf8String>) eventValues.getNonIndexedValues().get(1).getValue();
+            typedResponse.content = (List<String>) eventValues.getNonIndexedValues().get(1).getValue();
             typedResponse.previousBlock = (BigInteger) eventValues.getNonIndexedValues().get(2).getValue();
             responses.add(typedResponse);
         }
@@ -1371,7 +1371,7 @@ public class StockAsset extends Contract {
 
         public String account;
 
-        public List<Utf8String> content;
+        public List<String> content;
 
         public BigInteger previousBlock;
     }

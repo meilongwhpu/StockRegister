@@ -1,8 +1,7 @@
 package com.cstc.stockregister.service.impl;
 
-import com.cstc.stockregister.configuration.BcosConfig;
-import com.cstc.stockregister.configuration.ContractConfig;
 import com.cstc.stockregister.constant.ErrorCode;
+import com.cstc.stockregister.constant.OperCodeSet;
 import com.cstc.stockregister.constant.ResolveEventLogStatus;
 import com.cstc.stockregister.constant.SysConstant;
 import com.cstc.stockregister.contracts.Governor;
@@ -16,16 +15,16 @@ import com.cstc.stockregister.util.JsonHelper;
 import com.fasterxml.jackson.core.type.TypeReference;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.fisco.bcos.sdk.abi.EventEncoder;
 import org.fisco.bcos.sdk.abi.datatypes.generated.tuples.generated.Tuple1;
 import org.fisco.bcos.sdk.abi.datatypes.generated.tuples.generated.Tuple2;
 import org.fisco.bcos.sdk.client.protocol.response.BcosTransactionReceiptsDecoder;
 import org.fisco.bcos.sdk.client.protocol.response.BcosTransactionReceiptsInfo;
 import org.fisco.bcos.sdk.model.TransactionReceipt;
 import org.fisco.bcos.sdk.transaction.codec.decode.TransactionDecoderInterface;
-import org.fisco.bcos.sdk.transaction.codec.decode.TransactionDecoderService;
 import org.fisco.bcos.sdk.transaction.model.dto.TransactionResponse;
 import org.fisco.bcos.sdk.transaction.model.exception.ContractException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
@@ -37,54 +36,11 @@ import java.util.*;
 public class StockAssetServiceImpl extends BaseService implements StockAssetService {
     private static final int STOP_RESOLVE_BLOCK_NUMBER = 0;
 
-    private  HashSet<Integer> capitalChangeTypeSet=new HashSet<>();
-    private  HashSet<Integer> tranferTypeSet=new HashSet<>();
-    private  HashSet<Integer> pledgeTypeSet=new HashSet<>();
-    private  HashSet<Integer> frozenTypeSet=new HashSet<>();
-
-
-    /**
-     * The topic map.
-     */
-    private final HashMap<String, String> topicMap;
-
+    @Autowired
     private Governor governor;
+    @Autowired
+    @Qualifier("decoder")
     private TransactionDecoderInterface decoder;
-
-
-
-    public StockAssetServiceImpl(BcosConfig bcosConfig, ContractConfig contractConfig) {
-        super(bcosConfig,contractConfig);
-        try {
-            this.initialize(contractConfig.getDeployContractAccount());
-        } catch (Exception e) {
-            e.printStackTrace();
-            log.error("初始化StockAssetService对象失败",e);
-        }
-        governor=this.getContract(contractConfig.getGovernorAddress(), Governor.class);
-        decoder = new TransactionDecoderService(this.getClient().getCryptoSuite());
-        topicMap = new HashMap<String, String>();
-        topicMap.put(new EventEncoder(this.getClient().getCryptoSuite()).encode(StockAsset.STOCKBUSINESSRECORD_EVENT),"StockBusinessRecord");
-
-        capitalChangeTypeSet.add(SysConstant.INCR_CAPITAL_TYPE);
-        capitalChangeTypeSet.add(SysConstant.REDUCE_CAPITAL_TYPE);
-
-
-        tranferTypeSet.add(SysConstant.TRADE_TRANSFER_IN);
-        tranferTypeSet.add(SysConstant.TRADE_TRANSFER_OUT);
-        tranferTypeSet.add(SysConstant.NO_TRADE_TRANSFER_IN);
-        tranferTypeSet.add(SysConstant.NO_TRADE_TRANSFER_OUT);
-
-        pledgeTypeSet.add(SysConstant.PLEDGE_TYPE);
-        pledgeTypeSet.add(SysConstant.RELEASE_PLEDGE_TYPE);
-
-        frozenTypeSet.add(SysConstant.JUDICIAL_FREEZING);
-        frozenTypeSet.add(SysConstant.MANUAL_FREEZING);
-        frozenTypeSet.add(SysConstant.WAITING_FREEZING);
-        frozenTypeSet.add(SysConstant.WAITING_FREEZING_FROZEN);
-        frozenTypeSet.add(SysConstant.UNFREEZE);
-
-    }
 
     @Override
     public boolean updateTotalSupply(String assetCode, BigInteger _totalBalances) throws Exception {
@@ -515,7 +471,7 @@ public class StockAssetServiceImpl extends BaseService implements StockAssetServ
             TransactionReceipt receipt,int currentBlockNumber,Map<Integer, List<StockAsset.StockBusinessRecordEventResponse>> blockEventMap,
                                                         HashSet<Integer> isExist) {
         String topic = log.getTopics().get(0);
-        String event = topicMap.get(topic);
+        String event = this.getStockTopicMap().get(topic);
 
         if (StringUtils.isNotBlank(event)) {
             return extractEventsFromBlock(stockAsset,interAccount, receipt, currentBlockNumber, blockEventMap,isExist);
@@ -575,7 +531,7 @@ public class StockAssetServiceImpl extends BaseService implements StockAssetServ
             List<StockAsset.StockBusinessRecordEventResponse> eventList = blockEventMap.get(block);
             if(null!=eventList){
                 for (StockAsset.StockBusinessRecordEventResponse event : eventList) {
-                    if(capitalChangeTypeSet.contains(event.businessType.intValue())&& (businessType==SysConstant.ALL_RECORD_TYPE||businessType==SysConstant.CAPITAL_CHANGE_RECORD_TYPE)){
+                    if(OperCodeSet.capitalChangeTypeSet.contains(event.businessType.intValue())&& (businessType==SysConstant.ALL_RECORD_TYPE||businessType==SysConstant.CAPITAL_CHANGE_RECORD_TYPE)){
                         TransferRecordDTO transferRecord=new TransferRecordDTO();
                         transferRecord.setStockCode(assetCode);
                         transferRecord.setTransferType(event.businessType.intValue());
@@ -589,7 +545,7 @@ public class StockAssetServiceImpl extends BaseService implements StockAssetServ
                         transferRecord.setOccurTime(event.content.get(2).toString());
                         transferRecord.setSerialNum(event.content.get(3).toString());
                         stockBusinessRecords.getTransferRecords().add(transferRecord);
-                    }else if(tranferTypeSet.contains(event.businessType.intValue())&&(businessType==SysConstant.ALL_RECORD_TYPE||businessType==SysConstant.TRANSFER_RECORD_TYPE)){
+                    }else if(OperCodeSet.tranferTypeSet.contains(event.businessType.intValue())&&(businessType==SysConstant.ALL_RECORD_TYPE||businessType==SysConstant.TRANSFER_RECORD_TYPE)){
                         TransferRecordDTO transferRecord=new TransferRecordDTO();
                         transferRecord.setStockCode(assetCode);
                         transferRecord.setTransferType(event.businessType.intValue());
@@ -605,7 +561,7 @@ public class StockAssetServiceImpl extends BaseService implements StockAssetServ
                         transferRecord.setSerialNum(event.content.get(3).toString());
                         transferRecord.setOccurTime(event.content.get(4).toString());
                         stockBusinessRecords.getTransferRecords().add(transferRecord);
-                    }else if(pledgeTypeSet.contains(event.businessType.intValue())&&(businessType==SysConstant.ALL_RECORD_TYPE||businessType==SysConstant.PLEDGE_RECORD_TYPE)){
+                    }else if(OperCodeSet.pledgeTypeSet.contains(event.businessType.intValue())&&(businessType==SysConstant.ALL_RECORD_TYPE||businessType==SysConstant.PLEDGE_RECORD_TYPE)){
                         PledgeAndReleaseRecordDTO pledgeAndReleaseRecordDTO=new PledgeAndReleaseRecordDTO();
                         pledgeAndReleaseRecordDTO.setStockCode(assetCode);
                         pledgeAndReleaseRecordDTO.setBusinessType(event.businessType.intValue());
@@ -624,7 +580,7 @@ public class StockAssetServiceImpl extends BaseService implements StockAssetServ
                         pledgeAndReleaseRecordDTO.setOccurTime(event.content.get(7).toString());
                         pledgeAndReleaseRecordDTO.setCauseDesc(event.content.get(8).toString());
                         stockBusinessRecords.getPledgeAndReleaseRecords().add(pledgeAndReleaseRecordDTO);
-                    }else if(frozenTypeSet.contains(event.businessType.intValue())&&(businessType==SysConstant.ALL_RECORD_TYPE||businessType==SysConstant.FROZEN_RECORD_TYPE)){
+                    }else if(OperCodeSet.frozenTypeSet.contains(event.businessType.intValue())&&(businessType==SysConstant.ALL_RECORD_TYPE||businessType==SysConstant.FROZEN_RECORD_TYPE)){
                         FrozenAndReleaseRecordDTO frozenAndReleaseRecordDTO=new FrozenAndReleaseRecordDTO();
                         frozenAndReleaseRecordDTO.setStockCode(assetCode);
                         frozenAndReleaseRecordDTO.setSerialNum(event.content.get(0).toString());
